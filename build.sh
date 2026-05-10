@@ -10,7 +10,7 @@ trap 'echo "Build failed at line $LINENO. Exit code: $?" >&2' ERR
 export ARCH=arm64
 export LLVM=1
 export LLVM_IAS=1
-export LLVM_VER=12.0.1
+export LLVM_VER=19.1.7
 export KBUILD_BUILD_USER="GrayRavens-Team"
 export KBUILD_BUILD_HOST="Zenith's-Love-Story"
 
