@@ -87,10 +87,10 @@ make O=out gki_defconfig
 echo "Configuring THIN LTO..."
 
 scripts/config --file out/.config \
-    -e LTO_CLANG \
-    -d LTO_NONE \
-    -e LTO_CLANG_THIN \
-    -d LTO_CLANG_FULL
+-e LTO_CLANG \
+-d LTO_NONE \
+-d LTO_CLANG_THIN \
+-e LTO_CLANG_FULL
 
 # ── Build kernel ─────────────────────────────────────────────────────
 echo "Building kernel..."
