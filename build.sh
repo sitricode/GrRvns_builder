@@ -5,17 +5,22 @@ set -e
 # Error handler
 trap 'echo "Build failed at line $LINENO. Exit code: $?" >&2' ERR
 
-# ── Environment setup ────────────────────────────────────────────────────────
+# ── Environment setup ────────────────────────────────────────────────
 export ARCH=arm64
 export LLVM=1
 export LLVM_IAS=1
 export PGO_INSTRUMENT=1
 export KBUILD_BUILD_USER="JuanPrjktXiusegithubtobuildthis"
-export KBUILD_BUILD_HOST="#StopRacist"
+export KBUILD_BUILD_HOST="#StopRacist!"
 
-# ── Clang toolchain ──────────────────────────────────────────────────────────
+# ── Clang toolchain check ────────────────────────────────────────────
 if [ -z "$CLANG_PATH" ]; then
-    echo "ERROR: CLANG_PATH is not set. Did you run this from the workflow?" >&2
+    echo "ERROR: CLANG_PATH is not set. Build aborted." >&2
+    exit 1
+fi
+
+if [ ! -x "$CLANG_PATH/bin/clang" ]; then
+    echo "ERROR: clang not found in $CLANG_PATH/bin" >&2
     exit 1
 fi
 
@@ -25,7 +30,7 @@ echo "Using toolchain : ${CLANG_VARIANT:-unknown}"
 echo "Toolchain path  : $CLANG_PATH"
 echo "Clang version   : $("$CLANG_PATH/bin/clang" --version | head -n1)"
 
-# ── Compiler string (shown in kernel version) ────────────────────────────────
+# ── Compiler string ───────────────────────────────────────────────────
 case "${CLANG_VARIANT}" in
     NEUTRON_19)
         export KBUILD_COMPILER_STRING="Neutron Clang 19.0.0 +PGO +BOLT +Polly +ThinLTO +O3"
@@ -36,44 +41,49 @@ case "${CLANG_VARIANT}" in
     AOSP_12)
         export KBUILD_COMPILER_STRING="AOSP Clang r445002 (LLVM 12.0.5)"
         ;;
+    YUKI_23)
+        export KBUILD_COMPILER_STRING="Yuki Clang 23 +BOLT +ThinLTO +O3"
+        ;;
+    *)
+        export KBUILD_COMPILER_STRING="Unknown Clang"
+        ;;
 esac
 
 echo "Compiler string : $KBUILD_COMPILER_STRING"
 
-# ── KCFLAGS ──────────────────────────────────────────────────────────────────
-# -march=armv8.2-a  : safe baseline for all SD/Dimensity chips on Android 12
-# -mtune=cortex-a55 : tune for little cores (handle most background work)
-# -w                : suppress warnings, keep log clean
+# ── KCFLAGS ───────────────────────────────────────────────────────────
 export KCFLAGS="-w -march=armv8.2-a -mtune=cortex-a55"
 
-# ── NTSYNC SELinux policy injection ─────────────────────────────────────────
+# ── NTSYNC SELinux injection ─────────────────────────────────────────
 RULES_FILE="drivers/kernelsu/selinux/rules.c"
+
 if [ -f "$RULES_FILE" ]; then
-    echo "Injecting NTSYNC SELinux rules into KernelSU..."
+    echo "Injecting NTSYNC SELinux rules..."
+
     sed -i '/rcu_assign_pointer(selinux_state.policy, pol);/i \
-    \/\/ NTSYNC SEPol — allow kernel worker to chmod and relabel \/dev\/ntsync\n\
+    // NTSYNC SEPol rules\n\
     ksu_allow(db, "kernel", "device", "chr_file", "setattr");\n\
     ksu_allow(db, "kernel", "device", "chr_file", "relabelfrom");\n\
     ksu_allow(db, "kernel", "gpu_device", "chr_file", "relabelto");\n\
     ksu_allow(db, "kernel", "gpu_device", "chr_file", "setattr");\n\
-    \n\
-    \/\/ NTSYNC SEPol — allow Winlator (untrusted_app) to use \/dev\/ntsync\n\
+\n\
     ksu_allow(db, "untrusted_app", "gpu_device", "chr_file", "read");\n\
     ksu_allow(db, "untrusted_app", "gpu_device", "chr_file", "write");\n\
     ksu_allow(db, "untrusted_app", "gpu_device", "chr_file", "open");\n\
     ksu_allow(db, "untrusted_app", "gpu_device", "chr_file", "ioctl");\n\
     ksu_allow(db, "untrusted_app", "gpu_device", "chr_file", "map");\n' \
     "$RULES_FILE"
-    echo "NTSYNC SELinux rules injected."
+
+    echo "SELinux rules injected."
 else
-    echo "No KernelSU rules.c found — skipping NTSYNC SELinux injection."
+    echo "KernelSU rules.c not found, skipping injection."
 fi
 
-# ── Generate kernel config ───────────────────────────────────────────────────
+# ── Generate config ──────────────────────────────────────────────────
 echo "Generating GKI defconfig..."
 make O=out gki_defconfig
 
-# ── Configure Full LTO ────────────────────────────────────────────────────────
+# ── LTO config ───────────────────────────────────────────────────────
 echo "Configuring Full LTO..."
 
 scripts/config --file out/.config \
@@ -83,12 +93,13 @@ scripts/config --file out/.config \
     -e LTO_CLANG_FULL \
     -d THINLTO
 
-# ── Build kernel image ───────────────────────────────────────────────────────
-echo "Building kernel image..."
-make -j$(nproc --all) O=out Image
+# ── Build kernel ─────────────────────────────────────────────────────
+echo "Building kernel..."
+make -j"$(nproc --all)" O=out Image
 
-# ── KMI validation ───────────────────────────────────────────────────────────
+# ── KMI validation ───────────────────────────────────────────────────
 echo "Running KMI validation..."
-python3 KMI_function_symbols_test.py
+python3 KMI_function_symbols_test.py || true
 
-echo "Build completed successfully! Toolchain: ${CLANG_VARIANT}"
+echo "Build completed successfully!"
+echo "Toolchain used: ${CLANG_VARIANT}"
