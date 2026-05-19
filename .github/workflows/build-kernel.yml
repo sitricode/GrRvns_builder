@@ -15,9 +15,10 @@ on:
         description: 'Clang toolchain to use'
         type: choice
         options:
-          - CLANG_12
           - NEUTRON_19
-        default: CLANG_12
+          - ZYC_12
+          - AOSP_12
+        default: NEUTRON_19
       kernel_ref:
         description: 'kernel branch / tag / SHA to build'
         type: string
@@ -40,24 +41,9 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             bc bison flex build-essential libssl-dev libelf-dev \
             cpio kmod rsync zip patch curl ca-certificates \
-            python3 python3-pip python3-lxml git wget
+            python3 python3-pip python3-lxml git git-lfs wget
 
-      - name: Cache Clang 12 (kernel.org)
-        if: inputs.clang_variant == 'CLANG_12'
-        id: cache-clang-12
-        uses: actions/cache@v4
-        with:
-          path: ~/toolchain/clang-12.0.1
-          key: llvm-12.0.1-x86_64
-
-      - name: Download Clang 12 (if not cached)
-        if: inputs.clang_variant == 'CLANG_12' && steps.cache-clang-12.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p ~/toolchain/clang-12.0.1
-          curl -L "https://mirrors.edge.kernel.org/pub/tools/llvm/files/llvm-12.0.1-x86_64.tar.gz" \
-            | tar -xz --strip-components=1 -C ~/toolchain/clang-12.0.1
-          echo "Clang 12.0.1 downloaded."
-
+      # ── Neutron 19 ────────────────────────────────────────────────────────
       - name: Download Neutron Clang 19
         if: inputs.clang_variant == 'NEUTRON_19'
         run: |
@@ -65,17 +51,55 @@ jobs:
           cd ~/toolchain/neutron-clang
           curl -LO "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman"
           chmod +x antman
-          # 10032024 = LLVM 19.0.0git, latest Neutron build
           ./antman -S=10032024
-          echo "Neutron Clang 19 downloaded."
+          ./antman --patch=glibc
+          echo "Neutron Clang 19 ready."
 
+      # ── ZYC Clang 12 ─────────────────────────────────────────────────────
+      - name: Cache ZYC Clang 12
+        if: inputs.clang_variant == 'ZYC_12'
+        id: cache-zyc-12
+        uses: actions/cache@v4
+        with:
+          path: ~/toolchain/zyc-clang-12
+          key: zyc-clang-12-x86_64
+
+      - name: Download ZYC Clang 12 (if not cached)
+        if: inputs.clang_variant == 'ZYC_12' && steps.cache-zyc-12.outputs.cache-hit != 'true'
+        run: |
+          git lfs install
+          git clone --depth=1 -b 12 \
+            https://gitlab.com/clangsantoni/zyc_clang.git \
+            ~/toolchain/zyc-clang-12
+          cd ~/toolchain/zyc-clang-12
+          git lfs pull
+          echo "ZYC Clang 12 ready."
+
+      # ── AOSP Clang r445002 (LLVM 12.0.5) ─────────────────────────────────
+      - name: Cache AOSP Clang r445002
+        if: inputs.clang_variant == 'AOSP_12'
+        id: cache-aosp-12
+        uses: actions/cache@v4
+        with:
+          path: ~/toolchain/aosp-clang-r445002
+          key: aosp-clang-r445002-x86_64
+
+      - name: Download AOSP Clang r445002 (if not cached)
+        if: inputs.clang_variant == 'AOSP_12' && steps.cache-aosp-12.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth=1 \
+            https://github.com/AOSP-12/prebuilts_clang_host_linux-x86_clang-r445002.git \
+            ~/toolchain/aosp-clang-r445002
+          echo "AOSP Clang r445002 ready."
+
+      # ── Export CLANG_PATH ─────────────────────────────────────────────────
       - name: Export CLANG_PATH
         run: |
-          if [ "${{ inputs.clang_variant }}" = "CLANG_12" ]; then
-            echo "CLANG_PATH=$HOME/toolchain/clang-12.0.1" >> $GITHUB_ENV
-          else
-            echo "CLANG_PATH=$HOME/toolchain/neutron-clang" >> $GITHUB_ENV
-          fi
+          case "${{ inputs.clang_variant }}" in
+            NEUTRON_19) echo "CLANG_PATH=$HOME/toolchain/neutron-clang" >> $GITHUB_ENV ;;
+            ZYC_12)     echo "CLANG_PATH=$HOME/toolchain/zyc-clang-12" >> $GITHUB_ENV ;;
+            AOSP_12)    echo "CLANG_PATH=$HOME/toolchain/aosp-clang-r445002" >> $GITHUB_ENV ;;
+          esac
 
       - name: Shallow-clone kernel source
         run: |
