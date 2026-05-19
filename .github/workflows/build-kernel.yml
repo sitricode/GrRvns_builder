@@ -151,7 +151,20 @@ jobs:
           else
             curl -LSs https://raw.githubusercontent.com/pershoot/KernelSU-Next/dev-susfs/kernel/setup.sh | bash -s dev-susfs
           fi
-
+           
+      - name: Verify KSU integration (${{ matrix.ksu }})
+        if: matrix.ksu != 'VANILLA'
+        working-directory: kernel
+        run: |
+          echo "=== KSU directory check ==="
+          ls -la KernelSU* 2>/dev/null || echo "WARNING: No KernelSU dir found!"
+          echo "=== drivers/kernelsu check ==="
+          ls drivers/kernelsu/ 2>/dev/null || echo "WARNING: drivers/kernelsu missing!"
+          echo "=== Kconfig/Makefile hooks ==="
+          grep -r "kernelsu\|KSU" drivers/Makefile drivers/Kconfig 2>/dev/null || echo "WARNING: No KSU hooks in drivers!"
+          echo "=== gki_defconfig KSU entries ==="
+          grep "CONFIG_KSU" arch/arm64/configs/gki_defconfig || echo "WARNING: No KSU configs in gki_defconfig!"
+      
        - name: Apply SUSFS patches (KSUN only)
         if: matrix.ksu == 'KSUN'
         working-directory: kernel
