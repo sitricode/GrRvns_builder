@@ -240,7 +240,7 @@ jobs:
       # ── PACKAGE ─────────────────────────────
       - name: Package
         run: |
-          git clone --depth=1 https://github.com/osm0sis/AnyKernel3 anykernel
+          git clone --depth=1 https://github.com/Juanstews/AnyKernel3 anykernel
           cp kernel/out/arch/arm64/boot/Image anykernel/
           cd anykernel
           zip -r9 "../${{ inputs.kernel_name }}-${{ matrix.ksu }}-${{ matrix.clang }}.zip" .
