@@ -29,7 +29,7 @@ inject_selinux "NTSYNC" \
 ksu_allow(db, "kernel", "device", "chr_file", "relabelfrom");\n\
 ksu_allow(db, "kernel", "gpu_device", "chr_file", "relabelto");\n\
 ksu_allow(db, "kernel", "gpu_device", "chr_file", "setattr");\n\
-ksu_allow(db, "kernel", "untrusted_app", "gpu_device", "chr_file", "read");\n\
+ksu_allow(db, "untrusted_app", "gpu_device", "chr_file", "read");\n\
 ksu_allow(db, "untrusted_app", "gpu_device", "chr_file", "write");\n\
 ksu_allow(db, "untrusted_app", "gpu_device", "chr_file", "open");\n\
 ksu_allow(db, "untrusted_app", "gpu_device", "chr_file", "ioctl");\n\
