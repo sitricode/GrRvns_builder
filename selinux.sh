@@ -158,4 +158,19 @@ ksu_allow(db, "kernel", "sysfs_devices_system_cpu", "file", "write");\n\
 ksu_allow(db, "kernel", "sysfs_devices_system_cpu", "file", "open");\n\
 ksu_allow(db, "kernel", "sysfs_devices_system_cpu", "file", "getattr");\n'
 
+# ---------------------------------------------------------------------------
+# Kenshō — kernel panic capture and forensic logging
+# Exposes /sys/kernel/kensho/last_panic, crashed, and info.
+# system_app and shell need read access to read crash logs via sysfs.
+# ---------------------------------------------------------------------------
+inject_selinux "Kenshō" \
+' ksu_allow(db, "system_app", "sysfs_kernel", "dir", "search");\n\
+ksu_allow(db, "system_app", "sysfs_kernel", "file", "read");\n\
+ksu_allow(db, "system_app", "sysfs_kernel", "file", "open");\n\
+ksu_allow(db, "system_app", "sysfs_kernel", "file", "getattr");\n\
+ksu_allow(db, "shell", "sysfs_kernel", "dir", "search");\n\
+ksu_allow(db, "shell", "sysfs_kernel", "file", "read");\n\
+ksu_allow(db, "shell", "sysfs_kernel", "file", "open");\n\
+ksu_allow(db, "shell", "sysfs_kernel", "file", "getattr");\n'
+
 echo "✅ All GrayRavens SELinux rules injected successfully"
