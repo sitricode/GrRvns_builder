@@ -23,7 +23,7 @@ on:
       kernel_name:
         description: 'Kernel base name'
         type: string
-        default: GrayRavens-Zenithed-V6.0
+        default: GrayRavens-Zenithed
       kernel_ref:
         description: 'kernel branch / tag / SHA to build'
         type: string
@@ -55,8 +55,27 @@ jobs:
             echo 'clang_variants=["${{ inputs.clang_variant }}"]' >> $GITHUB_OUTPUT
           fi
 
-  build:
+  notify-started:
+    name: Notify Telegram (started)
     needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send started alert
+        uses: appleboy/telegram-action@master
+        with:
+          token: ${{ secrets.TG_BOT_TOKEN }}
+          chat_id: ${{ secrets.TG_CHAT_ID }}
+          message: |
+            🚀 Kernel build started
+            Name: ${{ inputs.kernel_name }}
+            Ref: ${{ inputs.kernel_ref }}
+            KSU variants: ${{ needs.setup.outputs.ksu_variants }}
+            Clang variants: ${{ needs.setup.outputs.clang_variants }}
+            Repo: ${{ github.repository }}
+            Run #${{ github.run_number }}
+
+  build:
+    needs: [setup, notify-started]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
