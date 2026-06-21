@@ -62,8 +62,6 @@ jobs:
       matrix:
         ksu: ${{ fromJson(needs.setup.outputs.ksu_variants) }}
         clang: ${{ fromJson(needs.setup.outputs.clang_variants) }}
-    outputs:
-      zip_name: ${{ steps.zipname.outputs.zip_name }}
     steps:
       - name: Checkout workflow repo (build.sh lives here)
         uses: actions/checkout@v4
@@ -182,11 +180,9 @@ jobs:
           ./build.sh
 
       - name: Package with AnyKernel3
-        id: zipname
         run: |
           ZIP_NAME="${{ inputs.kernel_name }}-${{ matrix.ksu }}-${{ matrix.clang }}"
           echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
-          echo "zip_name=$ZIP_NAME" >> $GITHUB_OUTPUT
           git clone --depth=1 https://github.com/XTENSEI/GrayRavens-anykernel anykernel
           cp kernel/out/arch/arm64/boot/Image anykernel/Image
           cd anykernel
@@ -209,14 +205,24 @@ jobs:
 
   notify-success:
     name: Notify Telegram (success)
-    needs: build
+    needs: [setup, build]
     if: success()
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ksu: ${{ fromJson(needs.setup.outputs.ksu_variants) }}
+        clang: ${{ fromJson(needs.setup.outputs.clang_variants) }}
     steps:
+      - name: Compute zip name
+        run: |
+          ZIP_NAME="${{ inputs.kernel_name }}-${{ matrix.ksu }}-${{ matrix.clang }}"
+          echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
+
       - name: Download flashable zip
         uses: actions/download-artifact@v4
         with:
-          name: ${{ needs.build.outputs.zip_name }}
+          name: ${{ env.ZIP_NAME }}
           path: .
 
       - name: Send to Telegram
@@ -226,10 +232,11 @@ jobs:
           chat_id: ${{ secrets.TG_CHAT_ID }}
           message: |
             ✅ Kernel built
-            Tag: ${{ needs.build.outputs.zip_name }}
+            Tag: ${{ env.ZIP_NAME }}
+            KSU: ${{ matrix.ksu }} | Clang: ${{ matrix.clang }}
             Repo: ${{ github.repository }}
             Run #${{ github.run_number }}
-          document: ${{ needs.build.outputs.zip_name }}.zip
+          document: ${{ env.ZIP_NAME }}.zip
 
   notify-failure:
     name: Notify Telegram (failure)
