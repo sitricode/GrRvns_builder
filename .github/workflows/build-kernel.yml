@@ -64,7 +64,7 @@ jobs:
         uses: appleboy/telegram-action@master
         with:
           token: ${{ secrets.TG_BOT_TOKEN }}
-          chat_id: ${{ secrets.TG_CHAT_ID }}
+          to: ${{ secrets.TG_CHAT_ID }}
           message: |
             🚀 Kernel build started
             Name: ${{ inputs.kernel_name }}
@@ -237,7 +237,7 @@ jobs:
         uses: appleboy/telegram-action@master
         with:
           token: ${{ secrets.TG_BOT_TOKEN }}
-          chat_id: ${{ secrets.TG_CHAT_ID }}
+          to: ${{ secrets.TG_CHAT_ID }}
           message: |
             ❌ Kernel build FAILED
             Name: ${{ inputs.kernel_name }}
@@ -275,7 +275,7 @@ jobs:
         uses: appleboy/telegram-action@master
         with:
           token: ${{ secrets.TG_BOT_TOKEN }}
-          chat_id: ${{ secrets.TG_CHAT_ID }}
+          to: ${{ secrets.TG_CHAT_ID }}
           message: |
             ✅ Kernel built
             Tag: ${{ env.ZIP_NAME }}
