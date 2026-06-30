@@ -118,7 +118,7 @@ jobs:
 
       - name: Shallow-clone kernel source
         run: |
-          git clone --depth=1 --branch "${{ inputs.kernel_ref }}" https://github.com/sitricode/gki_5.10
+          git clone --depth=1 --branch "${{ inputs.kernel_ref }}" https://github.com/sitricode/gki_5.10 kernel
 
       - name: Apply KernelSU
         if: matrix.ksu != 'VNL'
